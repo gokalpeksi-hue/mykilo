@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>MyKilo — Kilo Takip</title>
+<meta name="description" content="Günlük kilo takibi: fotoğraftan otomatik veri okuma, VKİ ve kilo dilimi, günlük/haftalık/aylık/yıllık grafik." />
+<link rel="icon" type="image/png" href="favicon-32.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#0b1220" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="MyKilo" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#020617; --bg2:#0b1220; --card:#111827; --card2:#1e293b;
+    --line:#1f2937; --muted:#94a3b8; --muted2:#64748b; --text:#f8fafc;
+    --orange:#f97316; --orange-l:#fb923c; --teal:#2dd4bf; --blue:#3b82f6;
+    --green:#22c55e; --amber:#f59e0b; --red:#ef4444; --violet:#a78bfa;
+    --r:18px; --shadow:0 10px 30px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    background:radial-gradient(1200px 600px at 50% -10%, #0b1220 0%, var(--bg) 60%);
+    color:var(--text);min-height:100vh;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(env(safe-area-inset-bottom) + 24px) env(safe-area-inset-left);
+  }
+  .wrap{max-width:680px;margin:0 auto;padding:16px 14px 40px}
+  /* Header */
+  .topbar{display:flex;align-items:center;gap:12px;margin:6px 2px 18px}
+  .brand-logo{width:46px;height:46px;border-radius:12px;box-shadow:var(--shadow)}
+  .brand h1{font-size:22px;font-weight:900;margin:0;letter-spacing:-.3px}
+  .brand h1 b{color:var(--orange)}
+  .brand p{font-size:12px;color:var(--muted);margin:2px 0 0}
+  .top-actions{margin-left:auto;display:flex;gap:8px}
+  .icon-btn{background:var(--card);border:1px solid var(--line);color:var(--text);
+    width:42px;height:42px;border-radius:12px;font-size:18px;cursor:pointer;display:grid;place-items:center}
+  .icon-btn:active{transform:scale(.94)}
+  /* Cards */
+  .card{background:linear-gradient(180deg,var(--card) 0%,#0e1626 100%);border:1px solid var(--line);
+    border-radius:var(--r);padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+  .card h2{font-size:14px;margin:0 0 12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  /* Entry */
+  .entry-top{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+  .field{flex:1;min-width:120px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+  input,select{width:100%;background:#0a1322;border:1px solid var(--line);color:var(--text);
+    border-radius:12px;padding:13px 14px;font-size:16px;font-family:inherit;outline:none}
+  input:focus,select:focus{border-color:var(--orange)}
+  .weight-input{font-size:30px;font-weight:800;text-align:center;letter-spacing:-1px;padding:10px 8px}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{border:none;border-radius:12px;padding:13px 16px;font-size:15px;font-weight:700;
+    cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+  .btn:active{transform:scale(.97)}
+  .btn-primary{background:linear-gradient(180deg,var(--orange-l),var(--orange));color:#1a0f00;width:100%}
+  .btn-ghost{background:var(--card2);color:var(--text);border:1px solid var(--line)}
+  .btn-sm{padding:9px 12px;font-size:13px}
+  .btn-block{width:100%}
+  .btn-danger{background:#3a1212;color:#fca5a5;border:1px solid #7f1d1d}
+  /* BMI live badge */
+  .bmi-live{display:flex;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;border-radius:14px;
+    background:#0a1322;border:1px solid var(--line)}
+  .bmi-live .big{font-size:26px;font-weight:900}
+  .bmi-live .lbl{font-size:12px;color:var(--muted)}
+  .pill{padding:5px 12px;border-radius:999px;font-size:13px;font-weight:800;margin-left:auto;white-space:nowrap}
+  /* detail toggle */
+  .detail-toggle{margin-top:12px;background:none;border:none;color:var(--orange-l);font-size:13px;
+    font-weight:700;cursor:pointer;padding:4px 0;font-family:inherit}
+  .detail-grid{display:none;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .detail-grid.open{display:grid}
+  .detail-grid .field label{font-size:11px}
+  .detail-grid input{font-size:15px;padding:11px 12px}
+  /* Stat tiles */
+  .tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .tile{background:#0e1626;border:1px solid var(--line);border-radius:14px;padding:13px 12px;min-height:84px}
+  .tile .t-lbl{font-size:11.5px;color:var(--muted);margin-bottom:6px;line-height:1.2}
+  .tile .t-val{font-size:22px;font-weight:800;letter-spacing:-.5px}
+  .tile .t-val small{font-size:12px;font-weight:600;color:var(--muted);margin-left:2px}
+  .t-up{color:var(--red)} .t-down{color:var(--green)} .t-flat{color:var(--muted)}
+  /* Tabs */
+  .tabs{display:flex;gap:6px;background:#0a1322;border:1px solid var(--line);border-radius:14px;padding:5px;margin-bottom:14px}
+  .tab{flex:1;text-align:center;padding:10px 6px;border-radius:10px;font-size:13.5px;font-weight:700;
+    color:var(--muted);cursor:pointer;border:none;background:none;font-family:inherit}
+  .tab.active{background:linear-gradient(180deg,var(--orange-l),var(--orange));color:#1a0f00}
+  /* Chart */
+  .chart-wrap{width:100%;overflow:hidden}
+  svg.chart{width:100%;height:auto;display:block}
+  .chart-empty{color:var(--muted);text-align:center;padding:34px 10px;font-size:14px}
+  /* numeric table */
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
+  th,td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+  td.delta-up{color:var(--red)} td.delta-down{color:var(--green)}
+  /* history */
+  .hist-item{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--line)}
+  .hist-item:last-child{border-bottom:none}
+  .hist-date{font-size:13px;color:var(--muted);width:96px;flex-shrink:0}
+  .hist-w{font-size:17px;font-weight:800}
+  .hist-extra{font-size:11.5px;color:var(--muted2);margin-top:2px}
+  .hist-actions{margin-left:auto;display:flex;gap:6px}
+  .mini{background:none;border:1px solid var(--line);color:var(--muted);border-radius:9px;
+    padding:6px 9px;font-size:12px;cursor:pointer;font-family:inherit}
+  .mini:active{transform:scale(.94)}
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(2,6,23,.78);backdrop-filter:blur(4px);
+    display:none;align-items:flex-end;justify-content:center;z-index:50;padding:0}
+  .overlay.open{display:flex}
+  .sheet{background:var(--bg2);border:1px solid var(--line);border-bottom:none;
+    border-radius:22px 22px 0 0;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;padding:18px 16px 30px}
+  .sheet h2{font-size:18px;margin:4px 0 16px;text-transform:none;color:var(--text);letter-spacing:0}
+  .sheet .grab{width:40px;height:5px;border-radius:3px;background:#334155;margin:0 auto 14px}
+  .set-group{margin-bottom:18px}
+  .set-group .field{margin-bottom:10px}
+  .hint{font-size:12px;color:var(--muted2);margin-top:6px;line-height:1.5}
+  .divider{height:1px;background:var(--line);margin:16px 0}
+  /* toast */
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+    background:#0e1626;border:1px solid var(--line);color:var(--text);padding:12px 18px;border-radius:14px;
+    font-size:14px;font-weight:600;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.3s;z-index:80;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* loader */
+  .scan{display:none;align-items:center;gap:10px;margin-top:12px;color:var(--orange-l);font-size:13px;font-weight:600}
+  .scan.on{display:flex}
+  .spin{width:18px;height:18px;border:2.5px solid #3a2a14;border-top-color:var(--orange);border-radius:50%;animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:middle}
+  .goal-note{font-size:13px;color:var(--muted);margin-top:10px;text-align:center}
+  .goal-note b{color:var(--orange-l)}
+  .empty-hero{text-align:center;color:var(--muted);padding:10px 6px}
+  @media(max-width:380px){ .tile .t-val{font-size:19px} .weight-input{font-size:26px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- HEADER -->
+  <header class="topbar">
+    <img class="brand-logo" src="logo.svg" alt="MyKilo" />
+    <div class="brand">
+      <h1>My<b>Kilo</b></h1>
+      <p>Kilo &amp; vücut analizi takibi</p>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="btnInfo" title="Bilgi" aria-label="Bilgi">i</button>
+      <button class="icon-btn" id="btnSettings" title="Ayarlar" aria-label="Ayarlar">⚙</button>
+    </div>
+  </header>
+
+  <!-- PROFILE BANNER (first run) -->
+  <div class="card" id="profileBanner" style="display:none">
+    <div class="empty-hero">
+      <p style="font-size:15px;color:var(--text);font-weight:700;margin:4px 0 6px">Başlamak için profilini gir 👋</p>
+      <p style="margin:0 0 14px">Yaş, boy ve hedef kilonu girince her tartında <b style="color:var(--orange-l)">VKİ ve kilo dilimin</b> otomatik hesaplanır.</p>
+      <button class="btn btn-primary" id="btnSetupProfile" style="max-width:240px;margin:0 auto">Profili Ayarla</button>
+    </div>
+  </div>
+
+  <!-- ENTRY CARD -->
+  <div class="card" id="entryCard">
+    <h2>Yeni Tartı</h2>
+    <div class="entry-top">
+      <div class="field" style="flex:1.3">
+        <label for="inDate">Tarih</label>
+        <input type="date" id="inDate" />
+      </div>
+      <div class="field" style="flex:1.7">
+        <label for="inWeight">Kilo (kg)</label>
+        <input type="number" inputmode="decimal" step="0.1" id="inWeight" class="weight-input" placeholder="0,0" />
+      </div>
+    </div>
+
+    <!-- live BMI -->
+    <div class="bmi-live" id="bmiLive" style="display:none">
+      <div>
+        <div class="lbl">VKİ (Vücut Kitle İndeksi)</div>
+        <div class="big" id="bmiVal">—</div>
+      </div>
+      <span class="pill" id="bmiPill">—</span>
+    </div>
+
+    <!-- photo / screenshot scan -->
+    <div class="row" style="margin-top:12px">
+      <button class="btn btn-ghost btn-block" id="btnPhoto">📷 Ekran görüntüsü / fotoğraftan oku</button>
+      <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none" />
+    </div>
+    <div class="scan" id="scanMsg"><span class="spin"></span><span>Görsel okunuyor, lütfen bekleyin…</span></div>
+
+    <!-- detailed body analysis -->
+    <button class="detail-toggle" id="detailToggle">＋ Detaylı vücut analizi (isteğe bağlı)</button>
+    <div class="detail-grid" id="detailGrid">
+      <div class="field"><label>Vücut yağı %</label><input type="number" step="0.1" inputmode="decimal" id="inFat" placeholder="—"/></div>
+      <div class="field"><label>İskelet kas kütlesi (kg)</label><input type="number" step="0.1" inputmode="decimal" id="inMuscle" placeholder="—"/></div>
+      <div class="field"><label>Viseral yağ</label><input type="number" step="0.1" inputmode="decimal" id="inVisceral" placeholder="—"/></div>
+      <div class="field"><label>Bazal metabolizma (kcal)</label><input type="number" step="1" inputmode="numeric" id="inBmr" placeholder="—"/></div>
+      <div class="field"><label>Vücut su oranı %</label><input type="number" step="0.1" inputmode="decimal" id="inWater" placeholder="—"/></div>
+      <div class="field"><label>Kemik mineral (kg)</label><input type="number" step="0.01" inputmode="decimal" id="inBone" placeholder="—"/></div>
+      <div class="field"><label>Protein %</label><input type="number" step="0.1" inputmode="decimal" id="inProtein" placeholder="—"/></div>
+      <div class="field"><label>Yağsız kütle (kg)</label><input type="number" step="0.1" inputmode="decimal" id="inLean" placeholder="—"/></div>
+    </div>
+
+    <div style="margin-top:14px">
+      <button class="btn btn-primary" id="btnSave">Kaydet</button>
+    </div>
+  </div>
+
+  <!-- STATS DASHBOARD -->
+  <div class="card" id="statsCard" style="display:none">
+    <h2>Özet</h2>
+    <div class="tiles" id="statTiles"></div>
+    <div class="goal-note" id="goalNote"></div>
+  </div>
+
+  <!-- TREND -->
+  <div class="card" id="trendCard" style="display:none">
+    <h2>Kilo Gelişimi</h2>
+    <div class="tabs" id="periodTabs">
+      <button class="tab active" data-p="day">Günlük</button>
+      <button class="tab" data-p="week">Haftalık</button>
+      <button class="tab" data-p="month">Aylık</button>
+      <button class="tab" data-p="year">Yıllık</button>
+    </div>
+    <div class="chart-wrap" id="chartWrap"></div>
+    <div class="legend">
+      <span><i style="background:var(--orange)"></i>Kilo</span>
+      <span id="goalLegend" style="display:none"><i style="background:var(--teal)"></i>Hedef</span>
+    </div>
+    <div id="numTable"></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="card" id="histCard" style="display:none">
+    <h2>Geçmiş Kayıtlar</h2>
+    <div id="histList"></div>
+  </div>
+</div>
+
+<!-- SETTINGS SHEET -->
+<div class="overlay" id="settingsOverlay">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2>Ayarlar</h2>
+
+    <div class="set-group">
+      <div style="font-weight:700;margin-bottom:10px">👤 Profil</div>
+      <div class="row">
+        <div class="field" style="flex:1"><label>Ad (isteğe bağlı)</label><input type="text" id="setName" placeholder="Adın"/></div>
+        <div class="field" style="flex:1"><label>Yaş</label><input type="number" inputmode="numeric" id="setAge" placeholder="örn. 30"/></div>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:1"><label>Boy (cm)</label><input type="number" inputmode="numeric" id="setHeight" placeholder="örn. 175"/></div>
+        <div class="field" style="flex:1"><label>Cinsiyet</label>
+          <select id="setSex"><option value="">—</option><option value="e">Erkek</option><option value="k">Kadın</option></select>
+        </div>
+      </div>
+      <div class="field"><label>Hedef kilo (kg)</label><input type="number" step="0.1" inputmode="decimal" id="setGoal" placeholder="örn. 72"/></div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="set-group">
+      <div style="font-weight:700;margin-bottom:10px">☁️ Cihazlar arası senkron</div>
+      <div class="field"><label>Senkron kodu (boş = kapalı)</label><input type="text" id="setSync" placeholder="örn. gokalp-2026" autocomplete="off"/></div>
+      <p class="hint">Aynı kodu telefon ve bilgisayarına girersen verilerin sunucuda saklanıp otomatik eşitlenir. Çevrimdışıyken cihazında durur, internet gelince yüklenir.</p>
+      <div class="row" style="margin-top:8px">
+        <button class="btn btn-ghost btn-sm" id="btnPull">⬇ Buluttan getir</button>
+        <button class="btn btn-ghost btn-sm" id="btnPush">⬆ Buluta yükle</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="set-group">
+      <div style="font-weight:700;margin-bottom:10px">💾 Yedek (Google Drive vb.)</div>
+      <p class="hint">Tüm verini tek dosya olarak indir, Drive'a yükle. Yeni cihazda bu dosyayı seçerek geri yükle.</p>
+      <div class="row" style="margin-top:8px">
+        <button class="btn btn-ghost btn-sm" id="btnExport">⬇ Yedeği indir (.json)</button>
+        <button class="btn btn-ghost btn-sm" id="btnImport">⬆ Yedekten yükle</button>
+        <input type="file" id="importFile" accept="application/json,.json" style="display:none"/>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="set-group">
+      <div style="font-weight:700;margin-bottom:10px">🔧 Gelişmiş</div>
+      <div class="field"><label>Görsel okuma sunucusu (API)</label><input type="text" id="setApi" placeholder="https://...onrender.com"/></div>
+      <p class="hint">Fotoğraftan otomatik veri okuma bu sunucu üzerinden yapılır.</p>
+      <button class="btn btn-danger btn-sm btn-block" id="btnClear" style="margin-top:12px">🗑 Tüm verileri sil</button>
+    </div>
+
+    <button class="btn btn-primary" id="btnCloseSettings" style="margin-top:6px">Kapat &amp; Kaydet</button>
+  </div>
+</div>
+
+<!-- INFO SHEET -->
+<div class="overlay" id="infoOverlay">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2>MyKilo nedir?</h2>
+    <p class="hint" style="font-size:13.5px;line-height:1.7">
+      <b style="color:var(--text)">Günlük kilonu gir</b>, otomatik hafızaya alınsın. Her tartında <b style="color:var(--orange-l)">VKİ ve kilo dilimin</b> (zayıf / sağlıklı / fazla kilolu / obez) anında hesaplanır.<br><br>
+      <b style="color:var(--text)">📷 Ekran görüntüsünden oku:</b> Akıllı tartı uygulamanın ekran görüntüsünü yükle; kilo, vücut yağı, kas, su oranı gibi değerler otomatik okunup forma yazılır.<br><br>
+      <b style="color:var(--text)">📈 Takip:</b> Günlük, haftalık, aylık ve yıllık gelişimini hem grafik hem sayısal olarak gör.<br><br>
+      <b style="color:var(--text)">💾 Yedek:</b> Verini JSON olarak indirip Drive'a yedekle, ya da senkron koduyla cihazlar arası eşitle.<br><br>
+      <span style="color:var(--muted2)">VKİ sağlık taraması içindir, tıbbi teşhis değildir. Kas kütlesi yüksek kişilerde yanıltıcı olabilir.</span>
+    </p>
+    <button class="btn btn-primary" id="btnCloseInfo">Anladım</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ===================== MyKilo ===================== */
+const LS_KEY = "mykilo_v1";
+const DEFAULT_API = "https://urun-fiyat-takip.onrender.com";
+
+const state = {
+  profile: { name:"", age:null, height:null, sex:"", goal:null },
+  entries: [],            // {id,date,weight,fat,muscle,visceral,bmr,water,bone,protein,lean}
+  settings: { sync:"", api:DEFAULT_API },
+  period: "day"
+};
+
+/* ---------- helpers ---------- */
+const $ = (id)=>document.getElementById(id);
+const num = (v)=>{ if(v===""||v==null) return null; const n=parseFloat(String(v).replace(",",".")); return isNaN(n)?null:n; };
+const fmt = (n,d=1)=> n==null?"—":Number(n).toLocaleString("tr-TR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmt0 = (n)=> n==null?"—":Math.round(n).toLocaleString("tr-TR");
+function todayISO(){ const d=new Date(); const o=d.getTimezoneOffset(); return new Date(d.getTime()-o*60000).toISOString().slice(0,10); }
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2600); }
+
+/* ---------- BMI ---------- */
+function bmiOf(weight, heightCm){
+  if(!weight||!heightCm) return null;
+  const m = heightCm/100; return weight/(m*m);
+}
+function bmiCategory(bmi){
+  if(bmi==null) return {label:"—", color:"var(--muted)", bg:"#1e293b"};
+  if(bmi<18.5)  return {label:"Zayıf", color:"#0b1220", bg:"#60a5fa"};
+  if(bmi<25)    return {label:"Sağlıklı", color:"#06280f", bg:"#22c55e"};
+  if(bmi<30)    return {label:"Fazla Kilolu", color:"#2a1a02", bg:"#f59e0b"};
+  if(bmi<35)    return {label:"Obez (I)", color:"#2a0a0a", bg:"#fb7185"};
+  if(bmi<40)    return {label:"Obez (II)", color:"#2a0a0a", bg:"#ef4444"};
+  return            {label:"Aşırı Obez (III)", color:"#fff", bg:"#b91c1c"};
+}
+/* sağlıklı kilo aralığı (BMI 18.5–24.9) */
+function healthyRange(heightCm){
+  if(!heightCm) return null; const m=heightCm/100;
+  return { min: 18.5*m*m, max: 24.9*m*m };
+}
+
+/* ---------- persistence ---------- */
+function load(){
+  try{ const raw=localStorage.getItem(LS_KEY); if(raw){ const d=JSON.parse(raw);
+    Object.assign(state.profile, d.profile||{});
+    state.entries = Array.isArray(d.entries)?d.entries:[];
+    Object.assign(state.settings, d.settings||{});
+    if(!state.settings.api) state.settings.api=DEFAULT_API;
+  }}catch(e){}
+}
+let pushTimer=null;
+function save(skipSync){
+  localStorage.setItem(LS_KEY, JSON.stringify({profile:state.profile, entries:state.entries, settings:state.settings}));
+  if(!skipSync && state.settings.sync){ clearTimeout(pushTimer); pushTimer=setTimeout(cloudPush, 1200); }
+}
+
+/* ---------- cloud sync (opsiyonel) ---------- */
+function syncKey(){ return "mykilo_"+(state.settings.sync||"").trim().toLowerCase().replace(/[^a-z0-9_-]/g,""); }
+async function cloudPush(){
+  const key = state.settings.sync ? syncKey() : null; if(!key) return;
+  try{
+    await fetch(state.settings.api.replace(/\/$/,"")+"/api/kv/"+encodeURIComponent(key),{
+      method:"PUT", headers:{"content-type":"application/json"},
+      body: JSON.stringify({data:{profile:state.profile, entries:state.entries}})
+    });
+  }catch(e){ /* çevrimdışı, sonra */ }
+}
+async function cloudPull(silent){
+  const key = state.settings.sync ? syncKey() : null;
+  if(!key){ if(!silent) toast("Önce senkron kodu gir"); return; }
+  try{
+    const r = await fetch(state.settings.api.replace(/\/$/,"")+"/api/kv/"+encodeURIComponent(key));
+    const j = await r.json();
+    if(j && j.ok && j.data){
+      if(j.data.profile) Object.assign(state.profile, j.data.profile);
+      if(Array.isArray(j.data.entries)) state.entries = j.data.entries;
+      save(true); renderAll(); fillSettings();
+      if(!silent) toast("Buluttan getirildi ✓");
+    } else if(!silent){ toast("Bu kodla kayıt yok"); }
+  }catch(e){ if(!silent) toast("Bağlanılamadı"); }
+}
+
+/* ---------- entries ---------- */
+function upsertEntry(e){
+  const i = state.entries.findIndex(x=>x.date===e.date);
+  if(i>=0){ state.entries[i] = Object.assign({}, state.entries[i], e); }
+  else { state.entries.push(e); }
+  state.entries.sort((a,b)=> a.date<b.date?-1:1);
+}
+function deleteEntry(id){ state.entries = state.entries.filter(e=>e.id!==id); }
+
+/* ---------- aggregation ---------- */
+function bucketKey(dateStr, period){
+  const d = new Date(dateStr+"T00:00:00");
+  if(period==="day") return dateStr;
+  if(period==="year") return String(d.getFullYear());
+  if(period==="month") return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+  // week: ISO-ish, yıl + hafta no
+  const onejan = new Date(d.getFullYear(),0,1);
+  const week = Math.ceil((((d-onejan)/86400000)+onejan.getDay()+1)/7);
+  return d.getFullYear()+"-H"+String(week).padStart(2,"0");
+}
+function bucketLabel(key, period){
+  if(period==="day"){ const d=new Date(key+"T00:00:00"); return d.toLocaleDateString("tr-TR",{day:"2-digit",month:"short"}); }
+  if(period==="year") return key;
+  if(period==="month"){ const [y,m]=key.split("-"); return new Date(y,m-1,1).toLocaleDateString("tr-TR",{month:"short",year:"2-digit"}); }
+  if(period==="week"){ const [y,w]=key.split("-H"); return w+". hafta"; }
+  return key;
+}
+function aggregate(period){
+  const map = new Map();
+  for(const e of state.entries){ if(e.weight==null) continue;
+    const k = bucketKey(e.date, period);
+    if(!map.has(k)) map.set(k, {key:k, sum:0, n:0, min:Infinity, max:-Infinity, last:null, lastDate:""});
+    const b = map.get(k); b.sum+=e.weight; b.n++; b.min=Math.min(b.min,e.weight); b.max=Math.max(b.max,e.weight);
+    if(e.date>=b.lastDate){ b.last=e.weight; b.lastDate=e.date; }
+  }
+  const arr = [...map.values()].sort((a,b)=> a.key<b.key?-1:1);
+  arr.forEach(b=> b.avg = b.sum/b.n);
+  return arr;
+}
+
+/* ---------- rendering ---------- */
+function renderAll(){ renderProfileState(); renderLiveBMI(); renderStats(); renderTrend(); renderHistory(); }
+
+function renderProfileState(){
+  const has = state.profile.height || state.entries.length;
+  $("profileBanner").style.display = (state.profile.height? "none" : "block");
+}
+
+function renderLiveBMI(){
+  const w = num($("inWeight").value);
+  const h = state.profile.height;
+  const box = $("bmiLive");
+  if(w && h){
+    const b = bmiOf(w,h); const c = bmiCategory(b);
+    box.style.display="flex";
+    $("bmiVal").textContent = fmt(b,1);
+    const pill=$("bmiPill"); pill.textContent=c.label; pill.style.background=c.bg; pill.style.color=c.color;
+  } else { box.style.display="none"; }
+}
+
+function renderStats(){
+  const card=$("statsCard");
+  if(!state.entries.length){ card.style.display="none"; return; }
+  card.style.display="block";
+  const sorted=[...state.entries].sort((a,b)=>a.date<b.date?-1:1);
+  const first=sorted[0], last=sorted[sorted.length-1];
+  const cur=last.weight, start=first.weight;
+  const h=state.profile.height;
+  const bmi=bmiOf(cur,h), cat=bmiCategory(bmi);
+  const dSince = cur-start;
+  // son 7 / 30 gün
+  const ago=(days)=>{ const d=new Date(last.date+"T00:00:00"); d.setDate(d.getDate()-days); const iso=d.toISOString().slice(0,10);
+    let ref=null; for(const e of sorted){ if(e.date<=iso) ref=e; } return ref; };
+  const r7=ago(7), r30=ago(30);
+  const d7 = r7? cur-r7.weight : null;
+  const d30 = r30? cur-r30.weight : null;
+  const arrow=(d)=> d==null?"t-flat": (d>0.05?"t-up":(d<-0.05?"t-down":"t-flat"));
+  const sign=(d)=> d==null?"—":(d>0?"+":"")+fmt(d,1);
+  const tiles=[
+    {l:"Güncel kilo", v:fmt(cur,1), u:"kg", c:""},
+    {l:"VKİ", v:fmt(bmi,1), u:cat.label, c:"", pill:cat},
+    {l:"Başlangıçtan", v:sign(dSince), u:"kg", c:arrow(dSince)},
+    {l:"Son 7 gün", v:sign(d7), u:"kg", c:arrow(d7)},
+    {l:"Son 30 gün", v:sign(d30), u:"kg", c:arrow(d30)},
+    {l:"Kayıt", v:state.entries.length, u:"tartı", c:""},
+  ];
+  $("statTiles").innerHTML = tiles.map(t=>{
+    let valHtml = `<div class="t-val ${t.c}">${t.v}<small>${t.u||""}</small></div>`;
+    if(t.pill){ valHtml = `<div class="t-val">${t.v}</div><span class="pill" style="margin:6px 0 0;background:${t.pill.bg};color:${t.pill.color};display:inline-block;font-size:11px">${t.pill.label}</span>`; }
+    return `<div class="tile"><div class="t-lbl">${t.l}</div>${valHtml}</div>`;
+  }).join("");
+  // hedef notu
+  const g=state.profile.goal; const note=$("goalNote");
+  if(g){
+    const diff=cur-g;
+    if(Math.abs(diff)<0.1) note.innerHTML=`🎯 Hedefe ulaştın! <b>${fmt(g,1)} kg</b>`;
+    else if(diff>0) note.innerHTML=`Hedefe ulaşmak için <b>${fmt(diff,1)} kg</b> ver (hedef ${fmt(g,1)} kg)`;
+    else note.innerHTML=`Hedefin <b>${fmt(-diff,1)} kg</b> altındasın (hedef ${fmt(g,1)} kg)`;
+  } else {
+    const hr=healthyRange(h);
+    note.innerHTML = hr? `Sağlıklı kilo aralığın: <b>${fmt(hr.min,1)}–${fmt(hr.max,1)} kg</b>` : "";
+  }
+}
+
+/* SVG çizgi grafik */
+function lineChart(points, opts){
+  opts=opts||{};
+  const W=640, H=260, pad={l:42,r:16,t:18,b:34};
+  if(!points.length) return `<div class="chart-empty">Henüz veri yok. İlk tartını ekle.</div>`;
+  const vals=points.map(p=>p.v);
+  let mn=Math.min(...vals), mx=Math.max(...vals);
+  if(opts.goal!=null){ mn=Math.min(mn,opts.goal); mx=Math.max(mx,opts.goal); }
+  if(mn===mx){ mn-=1; mx+=1; }
+  const padV=(mx-mn)*0.15||1; mn-=padV; mx+=padV;
+  const innerW=W-pad.l-pad.r, innerH=H-pad.t-pad.b;
+  const x=(i)=> pad.l + (points.length===1? innerW/2 : innerW*i/(points.length-1));
+  const y=(v)=> pad.t + innerH*(1-(v-mn)/(mx-mn));
+  // gridlines + y labels
+  let grid="", ylab="";
+  const steps=4;
+  for(let s=0;s<=steps;s++){ const v=mn+(mx-mn)*s/steps; const yy=y(v);
+    grid+=`<line x1="${pad.l}" y1="${yy}" x2="${W-pad.r}" y2="${yy}" stroke="#1f2937" stroke-width="1"/>`;
+    ylab+=`<text x="${pad.l-8}" y="${yy+4}" fill="#64748b" font-size="11" text-anchor="end">${fmt(v,1)}</text>`;
+  }
+  // goal line
+  let goalLine="";
+  if(opts.goal!=null){ const gy=y(opts.goal);
+    goalLine=`<line x1="${pad.l}" y1="${gy}" x2="${W-pad.r}" y2="${gy}" stroke="#2dd4bf" stroke-width="2" stroke-dasharray="6 5"/>`;
+  }
+  // area + line
+  const ptsStr=points.map((p,i)=>`${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
+  const area=`${pad.l},${pad.t+innerH} ${ptsStr} ${x(points.length-1)},${pad.t+innerH}`;
+  // x labels (en fazla ~7)
+  let xlab=""; const stepX=Math.ceil(points.length/7);
+  points.forEach((p,i)=>{ if(i%stepX===0||i===points.length-1){
+    xlab+=`<text x="${x(i)}" y="${H-12}" fill="#64748b" font-size="10.5" text-anchor="middle">${p.label}</text>`; }});
+  // dots + son değer
+  let dots="";
+  points.forEach((p,i)=>{ dots+=`<circle cx="${x(i)}" cy="${y(p.v)}" r="${i===points.length-1?5:3}" fill="${i===points.length-1?'#fb923c':'#f97316'}" stroke="#0b1220" stroke-width="1.5"/>`; });
+  const last=points[points.length-1];
+  const lblY=Math.max(pad.t+12, y(last.v)-12);
+  const lastLabel=`<text x="${x(points.length-1)}" y="${lblY}" fill="#fb923c" font-size="13" font-weight="800" text-anchor="end">${fmt(last.v,1)}</text>`;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f97316" stop-opacity="0.35"/><stop offset="1" stop-color="#f97316" stop-opacity="0"/>
+    </linearGradient></defs>
+    ${grid}${ylab}${goalLine}
+    <polygon points="${area}" fill="url(#ag)"/>
+    <polyline points="${ptsStr}" fill="none" stroke="#f97316" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}${xlab}${lastLabel}
+  </svg>`;
+}
+
+function renderTrend(){
+  const card=$("trendCard");
+  if(!state.entries.length){ card.style.display="none"; return; }
+  card.style.display="block";
+  const period=state.period;
+  const buckets=aggregate(period);
+  const points=buckets.map(b=>({ label:bucketLabel(b.key,period), v: period==="day"? b.last : b.avg }));
+  const goal=state.profile.goal||null;
+  $("goalLegend").style.display = goal? "inline" : "none";
+  $("chartWrap").innerHTML = lineChart(points, {goal});
+  // sayısal tablo
+  let rows=""; const showVal=(b)=> period==="day"? b.last : b.avg;
+  for(let i=buckets.length-1;i>=0 && rows.split("<tr").length<=14;i--){
+    const b=buckets[i]; const prev= i>0? showVal(buckets[i-1]) : null;
+    const d= prev!=null? showVal(b)-prev : null;
+    const dCls= d==null?"":(d>0.05?"delta-up":(d<-0.05?"delta-down":""));
+    const dTxt= d==null?"—":(d>0?"+":"")+fmt(d,1);
+    rows+=`<tr><td>${bucketLabel(b.key,period)}</td><td>${fmt(showVal(b),1)}</td><td class="${dCls}">${dTxt}</td><td>${fmt(b.min,1)}</td><td>${fmt(b.max,1)}</td><td>${b.n}</td></tr>`;
+  }
+  const head=`<tr><th>Dönem</th><th>${period==="day"?"Kilo":"Ort."}</th><th>Δ</th><th>Min</th><th>Max</th><th>Adet</th></tr>`;
+  $("numTable").innerHTML = `<table><thead>${head}</thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderHistory(){
+  const card=$("histCard");
+  if(!state.entries.length){ card.style.display="none"; return; }
+  card.style.display="block";
+  const sorted=[...state.entries].sort((a,b)=>a.date<b.date?1:-1);
+  const h=state.profile.height;
+  $("histList").innerHTML = sorted.map(e=>{
+    const d=new Date(e.date+"T00:00:00").toLocaleDateString("tr-TR",{day:"2-digit",month:"short",year:"numeric"});
+    const bmi=bmiOf(e.weight,h); const c=bmiCategory(bmi);
+    const extra=[];
+    if(e.fat!=null) extra.push("yağ %"+fmt(e.fat,1));
+    if(e.muscle!=null) extra.push("kas "+fmt(e.muscle,1)+"kg");
+    if(e.water!=null) extra.push("su %"+fmt(e.water,1));
+    const extraTxt = extra.length? `<div class="hist-extra">${extra.join(" · ")}</div>` : "";
+    return `<div class="hist-item">
+      <div class="hist-date">${d}</div>
+      <div>
+        <div class="hist-w">${fmt(e.weight,1)} kg ${bmi!=null?`<span class="pill" style="font-size:10px;padding:2px 8px;margin:0 0 0 4px;background:${c.bg};color:${c.color}">${c.label}</span>`:""}</div>
+        ${extraTxt}
+      </div>
+      <div class="hist-actions">
+        <button class="mini" data-edit="${e.id}">Düzenle</button>
+        <button class="mini" data-del="${e.id}">Sil</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/* ---------- form <-> state ---------- */
+function readForm(){
+  const date=$("inDate").value||todayISO();
+  return {
+    id: "e_"+date,
+    date,
+    weight: num($("inWeight").value),
+    fat: num($("inFat").value),
+    muscle: num($("inMuscle").value),
+    visceral: num($("inVisceral").value),
+    bmr: num($("inBmr").value),
+    water: num($("inWater").value),
+    bone: num($("inBone").value),
+    protein: num($("inProtein").value),
+    lean: num($("inLean").value),
+  };
+}
+function clearForm(){
+  ["inWeight","inFat","inMuscle","inVisceral","inBmr","inWater","inBone","inProtein","inLean"].forEach(id=>$(id).value="");
+  $("inDate").value=todayISO();
+  $("detailGrid").classList.remove("open");
+  renderLiveBMI();
+}
+function fillFormFromEntry(e){
+  $("inDate").value=e.date;
+  $("inWeight").value=e.weight??"";
+  $("inFat").value=e.fat??""; $("inMuscle").value=e.muscle??""; $("inVisceral").value=e.visceral??"";
+  $("inBmr").value=e.bmr??""; $("inWater").value=e.water??""; $("inBone").value=e.bone??"";
+  $("inProtein").value=e.protein??""; $("inLean").value=e.lean??"";
+  if(e.fat!=null||e.muscle!=null||e.water!=null) $("detailGrid").classList.add("open");
+  renderLiveBMI();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+/* ---------- settings ---------- */
+function fillSettings(){
+  $("setName").value=state.profile.name||""; $("setAge").value=state.profile.age??"";
+  $("setHeight").value=state.profile.height??""; $("setSex").value=state.profile.sex||"";
+  $("setGoal").value=state.profile.goal??""; $("setSync").value=state.settings.sync||"";
+  $("setApi").value=state.settings.api||DEFAULT_API;
+}
+function applySettings(){
+  state.profile.name=$("setName").value.trim();
+  state.profile.age=num($("setAge").value);
+  state.profile.height=num($("setHeight").value);
+  state.profile.sex=$("setSex").value;
+  state.profile.goal=num($("setGoal").value);
+  state.settings.sync=$("setSync").value.trim();
+  state.settings.api=($("setApi").value.trim()||DEFAULT_API);
+  save(); renderAll();
+}
+
+/* ---------- vision (fotoğraftan oku) ---------- */
+async function scanImage(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=async ()=>{
+    const dataUrl=reader.result;
+    const base64=String(dataUrl).split(",")[1];
+    const mediaType=(file.type||"image/jpeg");
+    $("scanMsg").classList.add("on");
+    try{
+      const r=await fetch(state.settings.api.replace(/\/$/,"")+"/api/vision-weight",{
+        method:"POST", headers:{"content-type":"application/json"},
+        body: JSON.stringify({image:base64, mediaType})
+      });
+      if(!r.ok){ throw new Error(r.status===503?"no_key":"err"); }
+      const d=await r.json();
+      let filled=0;
+      const set=(id,val)=>{ if(val!=null && val!==0 && !isNaN(val)){ $(id).value=val; filled++; } };
+      set("inWeight", d.weight); set("inFat", d.bodyFat); set("inMuscle", d.muscle);
+      set("inVisceral", d.visceralFat); set("inBmr", d.bmr); set("inWater", d.bodyWater);
+      set("inBone", d.boneMineral); set("inProtein", d.protein); set("inLean", d.fatFreeMass);
+      if(d.bodyFat||d.muscle||d.bodyWater) $("detailGrid").classList.add("open");
+      renderLiveBMI();
+      toast(filled? `Okundu ✓ (${filled} değer)` : "Değer okunamadı, elle gir");
+    }catch(e){
+      toast(e.message==="no_key"? "Sunucuda API anahtarı yok" : "Okunamadı — internet/sunucu?");
+    }finally{ $("scanMsg").classList.remove("on"); }
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ---------- export / import ---------- */
+function exportBackup(){
+  const blob=new Blob([JSON.stringify({app:"MyKilo",version:1,exportedAt:new Date().toISOString(),
+    profile:state.profile, entries:state.entries},null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="mykilo-yedek-"+todayISO()+".json"; a.click(); URL.revokeObjectURL(a.href);
+  toast("Yedek indirildi");
+}
+function importBackup(file){
+  const reader=new FileReader();
+  reader.onload=()=>{ try{ const d=JSON.parse(reader.result);
+    if(d.profile) Object.assign(state.profile, d.profile);
+    if(Array.isArray(d.entries)) state.entries=d.entries;
+    save(); renderAll(); fillSettings(); toast("Yedek yüklendi ✓");
+  }catch(e){ toast("Geçersiz dosya"); } };
+  reader.readAsText(file);
+}
+
+/* ---------- events ---------- */
+function bind(){
+  $("inWeight").addEventListener("input", renderLiveBMI);
+  $("inDate").value=todayISO();
+
+  $("detailToggle").addEventListener("click",()=>$("detailGrid").classList.toggle("open"));
+
+  $("btnSave").addEventListener("click",()=>{
+    const e=readForm();
+    if(e.weight==null){ toast("Önce kilonu gir"); $("inWeight").focus(); return; }
+    upsertEntry(e); save(); renderAll();
+    toast("Kaydedildi ✓"); clearForm();
+    $("statsCard").scrollIntoView({behavior:"smooth",block:"nearest"});
+  });
+
+  $("btnPhoto").addEventListener("click",()=>$("fileInput").click());
+  $("fileInput").addEventListener("change",(ev)=>{ const f=ev.target.files[0]; ev.target.value=""; scanImage(f); });
+
+  // period tabs
+  $("periodTabs").addEventListener("click",(ev)=>{ const b=ev.target.closest(".tab"); if(!b) return;
+    state.period=b.dataset.p; [...$("periodTabs").children].forEach(t=>t.classList.toggle("active",t===b));
+    renderTrend();
+  });
+
+  // history actions
+  $("histList").addEventListener("click",(ev)=>{
+    const del=ev.target.closest("[data-del]"), ed=ev.target.closest("[data-edit]");
+    if(del){ if(confirm("Bu kayıt silinsin mi?")){ deleteEntry(del.dataset.del); save(); renderAll(); toast("Silindi"); } }
+    if(ed){ const e=state.entries.find(x=>x.id===ed.dataset.edit); if(e) fillFormFromEntry(e); }
+  });
+
+  // settings open/close
+  const openSheet=(id)=>{ if(id==="settingsOverlay") fillSettings(); $(id).classList.add("open"); };
+  const closeSheet=(id)=>$(id).classList.remove("open");
+  $("btnSettings").addEventListener("click",()=>openSheet("settingsOverlay"));
+  $("btnInfo").addEventListener("click",()=>openSheet("infoOverlay"));
+  $("btnSetupProfile").addEventListener("click",()=>openSheet("settingsOverlay"));
+  $("btnCloseInfo").addEventListener("click",()=>closeSheet("infoOverlay"));
+  $("btnCloseSettings").addEventListener("click",()=>{ applySettings(); closeSheet("settingsOverlay"); toast("Kaydedildi ✓"); });
+  [ "settingsOverlay","infoOverlay" ].forEach(id=>$(id).addEventListener("click",(ev)=>{ if(ev.target.id===id) { if(id==="settingsOverlay") applySettings(); closeSheet(id);} }));
+
+  $("btnExport").addEventListener("click",exportBackup);
+  $("btnImport").addEventListener("click",()=>$("importFile").click());
+  $("importFile").addEventListener("change",(ev)=>{ const f=ev.target.files[0]; ev.target.value=""; if(f) importBackup(f); });
+  $("btnPush").addEventListener("click",()=>{ applySettings(); cloudPush().then(()=>toast(state.settings.sync?"Buluta yüklendi ✓":"Önce senkron kodu gir")); });
+  $("btnPull").addEventListener("click",()=>{ applySettings(); cloudPull(false); });
+  $("btnClear").addEventListener("click",()=>{ if(confirm("TÜM veriler silinecek. Emin misin?")){ state.entries=[]; save(); renderAll(); toast("Veriler silindi"); } });
+}
+
+/* ---------- init ---------- */
+load(); bind(); fillSettings(); renderAll();
+if(state.settings.sync) cloudPull(true);
+window.addEventListener("online",()=>{ if(state.settings.sync) cloudPush(); });
+
+// service worker
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
+</script>
+</body>
+</html>
